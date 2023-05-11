@@ -46,6 +46,17 @@ python3 ingest_data.py \
   --tableName=yellow_taxi_trips \
   --url="https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet"
 
+python3 ingest_data_from_csv.py \
+  --user=root \
+  --password=root \
+  --host=localhost \
+  --port=5432 \
+  --dbName=ny_taxi \
+  --tableName=yellow_taxi_zones \
+  --url="https://d37ci6vzurychx.cloudfront.net/misc/taxi+_zone_lookup.csv"
+
+
+
 docker build -t taxi_ingest:v001 .
 
 docker run -it \
@@ -57,3 +68,37 @@ docker run -it \
   --dbName=ny_taxi \
   --tableName=yellow_taxi_trips \
   --url="https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet"
+
+docker run -it \
+  taxi_ingest:v001 --user=root \
+  --password=root \
+  --host=pg-database \
+  --port=5432 \
+  --dbName=ny_taxi \
+  --tableName=yellow_taxi_trips \
+  --url="https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet"
+
+
+select 
+	tpep_pickup_datetime,
+	tpep_dropoff_datetime,
+	total_amount,
+	CONCAT(zpu."Borough", ' / ', zpu."Zone") as "pickup_loc",
+	CONCAT(zdo."Borough", ' / ', zdo."Zone") as "dropoff_loc"
+from 
+	yellow_taxi_trips t 
+	JOIN yellow_taxi_zones zpu
+		on t."PULocationID" = zpu."LocationID"
+	JOIN yellow_taxi_zones zdo
+		on t."DOLocationID" = zdo."LocationID"
+limit 100;
+
+
+select 
+	cast(tpep_dropoff_datetime as date) as day,
+	count(1)
+from 
+	yellow_taxi_trips t
+group by
+	cast(tpep_dropoff_datetime as date)
+order by "day" asc;
